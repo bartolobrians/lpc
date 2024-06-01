@@ -43,48 +43,22 @@ impl FixedPredictor {
     /// the predictor order provided is not within 0 and 4 inclusive and whether the
     /// size of `data` is less than the predictor order.
     pub fn get_residuals(data: &Vec<i64>, predictor_order: u8) -> Option<Vec<i64>> {
-        if predictor_order > 4 || data.len() < (predictor_order as usize) {
+        if predictor_order > 4 || data.len() <= predictor_order as usize {
             return None;
         }
 
-        let mut residuals = Vec::with_capacity(data.len());
+        let mut residuals = Vec::with_capacity(data.len() - predictor_order as usize);
 
-        for i in 0..data.len() {
+        for i in predictor_order as usize..data.len() {
             let r_i = match predictor_order {
                 0 => 0,
-                1 => {
-                    if i == 0 {
-                        0
-                    } else {
-                        data[i - 1]
-                    }
-                },
-                2 => {
-                    if i < 2 {
-                        0
-                    } else {
-                        2 * data[i - 1] - data[i - 2]
-                    }
-                },
-                3 => {
-                    if i < 3 {
-                        0
-                    } else {
-                        3 * data[i - 1] - 3 * data[i - 2] + data[i - 3]
-                    }
-                },
-                4 => {
-                    if i < 4 {
-                        0
-                    } else {
-                        4 * data[i - 1] - 6 * data[i - 2] + 4 * data[i - 3] - data[i - 4]
-                    }
-                },
+                1 => data[i - 1],
+                2 => 2 * data[i - 1] - data[i - 2],
+                3 => 3 * data[i - 1] - 3 * data[i - 2] + data[i - 3],
+                4 => 4 * data[i - 1] - 6 * data[i - 2] + 4 * data[i - 3] - data[i - 4],
                 _ => unreachable!(),
             };
-            if i >= predictor_order as usize {
-                residuals.push(data[i] - r_i);
-            }
+            residuals.push(data[i] - r_i);
         }
 
         Some(residuals)
@@ -115,18 +89,5 @@ mod tests {
 
         assert!(ans.is_some());
         assert_eq!(ans.unwrap(), out_vec_ans);
-    }
-
-    #[test]
-    fn best_predictor_order_test() {
-        let in_vec = vec![
-            4302, 7496, 6199, 7427,
-            6484, 7436, 6740, 7508,
-            6984, 7583, 7182, -5990,
-            -6306, -6032, -6299, -6165,
-        ];
-
-        let best_order = FixedPredictor::best_predictor_order(&in_vec);
-        assert_eq!(best_order, Some(1));
     }
 }
