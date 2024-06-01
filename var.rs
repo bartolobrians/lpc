@@ -192,28 +192,28 @@ mod tests {
     }
 
     #[test]
-    fn test_autocorrelation_empty() {
+    fn autocorrelation_empty() {
         let samples = vec![];
         let autoc = VarPredictor::get_autocorrelation(&samples, 2);
         assert_eq!(autoc, vec![0.0, 0.0, 0.0]);
     }
 
     #[test]
-    fn test_autocorrelation_single_element() {
+    fn autocorrelation_single_element() {
         let samples = vec![42];
         let autoc = VarPredictor::get_autocorrelation(&samples, 2);
         assert_eq!(autoc, vec![1764.0, 0.0, 0.0]);
     }
 
     #[test]
-    fn test_autocorrelation_identical_elements() {
+    fn autocorrelation_identical_elements() {
         let samples = vec![1, 1, 1, 1, 1];
         let autoc = VarPredictor::get_autocorrelation(&samples, 2);
         assert_eq!(autoc, vec![5.0, 4.0, 3.0]);
     }
 
     #[test]
-    fn test_get_residuals() {
+    fn get_residuals() {
         let samples = vec![10, 20, 30, 40, 50];
         let qlp_coefs = vec![1, -1];
         let predictor_order = 2;
@@ -224,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_best_precision() {
+    fn get_best_precision() {
         let precision = VarPredictor::get_best_precision(16, 384);
         assert_eq!(precision, 8);
 
