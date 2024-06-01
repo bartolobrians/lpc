@@ -45,34 +45,6 @@ impl VarPredictor {
         coeffs
     }
 
-    /// Get a the list of LPC coefficients until some provided predictor order inclusive.
-    ///
-    /// For the return value `lpc_list`, `lpc_list[i]` contains a `Vec` of coefficients
-    /// for predictor order `i + 1`. The Levinson-Durbin algorithm is used to progressively
-    /// compute the LPC coefficients across multiple predictor orders.
-    fn build_predictor_coeffs(autoc: &Vec<f64>, max_predictor_order: u8) -> Vec<Vec<f64>> {
-        let mut lpc_list = Vec::new();
-        let mut coeffs = vec![0.0; max_predictor_order as usize];
-        let mut error = autoc[0];
-
-        for i in 1..=max_predictor_order as usize {
-            let mut k = autoc[i];
-            for j in 0..i - 1 {
-                k -= coeffs[j] * autoc[i - j - 1];
-            }
-            k /= error;
-
-            coeffs[i - 1] = k;
-            for j in 0..i - 1 {
-                coeffs[j] -= k * coeffs[i - j - 2];
-            }
-
-            lpc_list.push(coeffs[..i].to_vec());
-            error *= 1.0 - k * k;
-        }
-        lpc_list
-    }
-
     /// Quantize the predictor coefficients and find their shift factor
     ///
     /// The shift factor `S` is computed from the maximum absolute value of a coefficient
@@ -90,7 +62,7 @@ impl VarPredictor {
     /// Then, `L_i_r + \epsilon` is rounded away from zero to get the quantized coefficient.
     /// The new rounding error `\epsilon = L_i_r + \epsilon - round(L_i_r)` is then updated for the
     /// next coefficient.
-    pub fn quantize_coeffs(lpc_coefs: &Vec<f64>, mut precision: u8) -> (Vec<i64>, u8) {
+    pub fn quantize_coeffs(lpc_coefs: &Vec<f64>, precision: u8) -> (Vec<i64>, u8) {
         let max_coef = lpc_coefs.iter().cloned().fold(f64::MIN, f64::max);
         let shift_factor = (precision as f64 - max_coef.log2()).min(31.0) as i64;
         let mut quantized_coeffs = Vec::new();
@@ -119,10 +91,12 @@ impl VarPredictor {
         let predictor_order = predictor_order as usize;
         let qlp_shift = qlp_shift as usize;
 
+        // Warm-up samples
         for i in 0..predictor_order {
             residuals.push(samples[i]);
         }
 
+        // Compute residuals
         for i in predictor_order..samples.len() {
             let mut prediction = 0;
             for j in 0..predictor_order {
@@ -146,7 +120,6 @@ impl VarPredictor {
 
     pub fn get_best_lpc(samples: &Vec<i64>, bps: u8, block_size: u64) -> (Vec<i64>, u8, u8) {
         let max_order = 32;
-        let mut best_order = 1;
         let mut min_residual_sum = i64::MAX;
         let mut best_coeffs = Vec::new();
         let mut best_precision = 0;
@@ -158,7 +131,6 @@ impl VarPredictor {
             let residual_sum: i64 = residuals.iter().map(|&x| x.abs()).sum();
             if residual_sum < min_residual_sum {
                 min_residual_sum = residual_sum;
-                best_order = order;
                 best_coeffs = coeffs;
                 best_precision = precision;
                 best_shift = shift;
@@ -205,7 +177,8 @@ mod tests {
         ];
 
         let out_vec_ans = vec![
-            3, -1, -13, -10,
+            0, 79, 111, 3,
+            -1, -13, -10,
             -6, 2, 8, 8,
             6, 0, -3, -5,
             -4, -1, 1, 1,
